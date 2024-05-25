@@ -47,9 +47,14 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref ,onMounted  } from "vue";
+import store from "./store";
 
+onMounted(() => {
+  store.dispatch('fetchTodos');
+});
 const drawer = ref(null);
+
 </script>
 
 <script>

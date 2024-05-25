@@ -4,30 +4,34 @@
     <v-list flat>
       <div class="d-flex align-center pr-2">
         <v-text-field
-        v-model="taskTitle"
-        @keyup.enter="addTask"
+          v-model="taskTitle"
+          @keyup.enter="handleTaskAction"
+          @input="updateTaskTitle"
           class="pa-3"
           label="Add Task"
           variant="outlined"
           hide-details
+          ref="taskInput"
           clearable
+          maxlength="30"
         >
         </v-text-field>
-        <v-btn
-        @click="addTask"
-        icon>
+        <v-btn @click="handleTaskAction" icon>
           <v-icon> mdi-plus </v-icon>
         </v-btn>
       </div>
-      <div v-for="task in tasks" :key="task.id">
+      <div v-for="task in $store.state.todos" :key="task.id">
         <v-list-item
-          @click="changeStatus(task.id)"
+          @click="changeStatus(task.id, !task.status)"
           :style="{ backgroundColor: task.status ? '#ebf9fc' : '' }"
         >
           <template v-slot:default>
             <div class="d-flex align-center">
               <v-list-item-action>
-                <v-checkbox-btn v-model="task.status"></v-checkbox-btn>
+                <v-checkbox-btn
+                  v-model="task.status"
+                  :disabled=" editMode"
+                ></v-checkbox-btn>
               </v-list-item-action>
               <v-list-item-content>
                 <v-list-item-title
@@ -38,7 +42,16 @@
               </v-list-item-content>
               <div class="ml-auto">
                 <v-list-action class="mx-2">
-                  <v-icon @click.stop="deleteTask(task.id)" color="#45494a"
+                  <v-icon
+                    @click.stop="editTask(task.id, task.title)"
+                    color="#45494a"
+                    >mdi-square-edit-outline</v-icon
+                  >
+                </v-list-action>
+                <v-list-action class="mx-2">
+                  <v-icon
+                    @click.stop="deleteTask(task.id, task.title)"
+                    color="#45494a"
                     >mdi-delete</v-icon
                   >
                 </v-list-action>
@@ -54,58 +67,95 @@
     </v-list>
   </div>
 </template>
-
 <script>
+import store from "@/store";
+
 export default {
   name: "TodoPage",
   data() {
     return {
-      taskTitle:'',
-      tasks: [
-        {
-          id: 1,
-          title: "Wake Up",
-          status: false,
-        },
-        {
-          id: 2,
-          title: "Food",
-          status: false,
-        },
-        {
-          id: 3,
-          title: "Coding",
-          status: true,
-        },
-        {
-          id: 4,
-          title: "Sleep",
-          status: true,
-        },
-      ],
+      taskTitle: "",
+      editMode: false,
+      editedTaskId: null,
     };
   },
   methods: {
-    addTask(){
-      let newTask={
-        id:Date.now(),
-        title:this.taskTitle,
-        status:false
+    handleTaskAction() {
+      if (!this.taskTitle.trim()) {
+        console.log("Task title cannot be empty. POP");
+        return;
+      } else if (this.taskTitle.trim().length > 30) {
+        console.log("Task title cannot exceed 30 characters. POP");
+        return;
       }
-      this.tasks.push(newTask)
+
+      if (this.editMode) {
+        // If in edit mode, update the existing task
+        store.dispatch("updateTodo", {
+          id: this.editedTaskId,
+          title: this.taskTitle,
+        });
+        this.taskTitle = ""; // Clear input after updating task
+        this.editMode = false; // Exit edit mode
+      } else {
+        // Check if the task already exists
+        if (!store.state.todos.some((todo) => todo.title === this.taskTitle)) {
+          store.dispatch("addTodo", this.taskTitle);
+          this.taskTitle = ""; // Clear input after adding todo
+        } else {
+          console.log("Task already exists.");
+        }
+      }
     },
-    changeStatus(id) {
-      let task = this.tasks.filter((task) => task.id === id)[0];
-      task.status = !task.status;
+    deleteTask(id, title) {
+      if (this.editMode) {
+        console.log("POP");
+        return;
+      }
+      store.dispatch("deleteTodo", { id, title });
     },
-    deleteTask(id) {
-      this.tasks = this.tasks.filter((task) => task.id !== id);
+    changeStatus(id, status) {
+      if (this.editMode) {
+        console.log("POP");
+        return;
+      }
+      store.dispatch("changeStatus", { id, status });
+    },
+    editTask(id, title) {
+      if (this.editMode) {
+        console.log("POP");
+        return;
+      }
+      // Set the task title to the input field
+      this.taskTitle = title;
+      this.editedTaskId = id;
+      this.editMode = true;
+
+      // Optionally, you can focus on the input field after setting the title
+      this.$nextTick(() => {
+        this.$refs.taskInput.focus();
+      });
+    },
+    updateTaskTitle(event) {
+      if (this.taskTitle.trim().length > 29) {
+        console.log("Task title cannot exceed 30 characters. POP");
+        return;
+      }
+      this.taskTitle = event.target.value;
+      // Dispatch updateTodo action to update the task in the Vuex store
+      if (this.editMode) {
+        store.dispatch("editingTodoTitle", {
+          id: this.editedTaskId,
+          title: this.taskTitle,
+        });
+      }
     },
   },
 };
 </script>
+
 <style scoped>
 .custom-app-bar {
-  height: 150px; /* Adjust the height as needed */
+  height: 150px;
 }
 </style>
