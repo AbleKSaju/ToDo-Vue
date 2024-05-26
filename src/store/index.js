@@ -5,16 +5,29 @@ import { createStore } from 'vuex';
 
 export default createStore({
   state: {
+    completedTodo:0,
+    pendingTodo:0,
     todos: [],
     isLoaded: false, // Flag to track whether todos have been loaded
+    filterStatus: 'all'
   },
   getters: {
     allTodos: state => state.todos,
+    filteredTodos: state => {
+        if (state.filterStatus === 'completed') {
+          return state.todos.filter(todo => todo.status === true);
+        } else if (state.filterStatus === 'pending') {
+          return state.todos.filter(todo => todo.status === false);
+        }
+        return state.todos; // For 'all' and any other case, return all todos
+      }
   },
   actions: {
     fetchTodos({ commit , state }) {
         // Listen for changes to todos only once
+        console.log(state.isLoaded,"state.isLoaded");
       if (!state.isLoaded) {
+        console.log("ENTT");
         onSnapshot(collection(db, "Todos"), (querySnapshot) => {
           let fbTodos = [];
           querySnapshot.forEach(doc => {
@@ -24,9 +37,11 @@ export default createStore({
               status: doc.data().status,
               createAt: doc.data().createAt,
             };
+            console.log(todo,"todotodo");
             fbTodos.push(todo);
           });
           fbTodos = fbTodos.sort((a,b)=>b.createAt-a.createAt)
+          console.log(fbTodos,"fbTodos");
           commit('SET_TODOS', fbTodos);
           commit('SET_LOADED', true); // Set the loaded flag to true after fetching todos
         }, error => {
@@ -97,6 +112,8 @@ export default createStore({
   mutations: {
     SET_TODOS(state, todos) {
       state.todos = todos;
+      state.completedTodo = state.todos.filter((todo) => todo.status === true).length;
+      state.pendingTodo = state.completedTodo - state.todos.length
     },
     SET_LOADED(state, value) {
       state.isLoaded = value;
@@ -107,6 +124,9 @@ export default createStore({
           state.todos[todoIndex].title = title;
         }
       },
+      SET_FILTER_STATUS(state, status) {
+        state.filterStatus = status;
+      }
   },
   
   modules: {},
