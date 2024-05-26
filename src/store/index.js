@@ -9,7 +9,7 @@ export default createStore({
     isLoaded: false, // Flag to track whether todos have been loaded
   },
   getters: {
-    allTodos: (state) => state.todos,
+    allTodos: state => state.todos,
   },
   actions: {
     fetchTodos({ commit , state }) {
