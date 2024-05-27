@@ -25,9 +25,7 @@ export default createStore({
   actions: {
     fetchTodos({ commit , state }) {
         // Listen for changes to todos only once
-        console.log(state.isLoaded,"state.isLoaded");
       if (!state.isLoaded) {
-        console.log("ENTT");
         onSnapshot(collection(db, "Todos"), (querySnapshot) => {
           let fbTodos = [];
           querySnapshot.forEach(doc => {
@@ -36,12 +34,12 @@ export default createStore({
               title: doc.data().title,
               status: doc.data().status,
               createAt: doc.data().createAt,
+              completedAt: doc.data()?.completedAt,
+              updatedAt: doc.data().updatedAt,
             };
-            console.log(todo,"todotodo");
             fbTodos.push(todo);
           });
           fbTodos = fbTodos.sort((a,b)=>b.createAt-a.createAt)
-          console.log(fbTodos,"fbTodos");
           commit('SET_TODOS', fbTodos);
           commit('SET_LOADED', true); // Set the loaded flag to true after fetching todos
         }, error => {

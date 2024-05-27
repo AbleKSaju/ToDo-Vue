@@ -2,7 +2,10 @@
   <v-app id="inspire">
     <v-navigation-drawer :width="200" v-model="drawer" app>
       <div class="d-flex align-center">
-        <v-list-item-title class="text-h5 font-weight-medium" style="padding: 14px">
+        <v-list-item-title
+          class="text-h5 font-weight-medium"
+          style="padding: 14px"
+        >
           To - Do
         </v-list-item-title>
         <div class="pl-7">
@@ -15,12 +18,6 @@
           <v-list-item-content class="d-flex align-center">
             <v-icon color="black">mdi-list-box</v-icon>
             <v-list-item-title class="ml-2">Todo</v-list-item-title>
-          </v-list-item-content>
-        </v-list-item>
-        <v-list-item to="/about">
-          <v-list-item-content class="d-flex align-center">
-            <v-icon color="black">mdi-help-box</v-icon>
-            <v-list-item-title class="ml-2">About</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
       </v-list>
@@ -39,16 +36,20 @@
 </template>
 
 <script setup>
-import Header from "./components/Header.vue";
+// Import necessary components and functions
+import Header from "./components/Header.vue"; 
 import { ref, onMounted, watch } from "vue";
-import { useStore } from "vuex";
+import { useStore } from "vuex"; 
 
-const store = useStore();
-const drawer = ref(true);
+const store = useStore(); // Initialize Vuex store
+const drawer = ref(true); // Create a reactive reference for drawer state
 
+// Fetch todos when the component is mounted
 onMounted(() => {
-  store.dispatch("fetchTodos");
+  store.dispatch("fetchTodos"); // Dispatch fetchTodos action from the Vuex store
 });
+
+// Function to update the favicon based on the number of pending todos
 const updateFavicon = (pendingCount) => {
   const link = document.querySelector("link[rel~='icon']");
   if (!link) {
@@ -57,16 +58,23 @@ const updateFavicon = (pendingCount) => {
     document.head.appendChild(newLink);
     return newLink;
   }
-  link.href = pendingCount > 0 ? "https://cdn-icons-png.freepik.com/256/11207/11207691.png?semt=ais_hybrid" : "https://user-images.githubusercontent.com/69080584/119517399-c6f10280-bda1-11eb-9af9-4bdc197dcd65.png";
+  // Update the favicon based on the number of pending todos
+  link.href =
+    pendingCount > 0
+      ? "https://cdn-icons-png.freepik.com/256/11207/11207691.png?semt=ais_hybrid" 
+      : "https://user-images.githubusercontent.com/69080584/119517399-c6f10280-bda1-11eb-9af9-4bdc197dcd65.png";
 };
+
+// Watch the todos state in the Vuex store for changes
 watch(
   () => store.state.todos,
-(newTodos) => {
-    const pendingCount = newTodos.filter(todo => !todo.status).length;
-    document.title = pendingCount > 0 ? `Pending: ${pendingCount}`:"mr.perfect";
-    updateFavicon(pendingCount);
+  (newTodos) => {
+    const pendingCount = newTodos.filter((todo) => !todo.status).length; // Calculate the number of pending todos
+    document.title =
+      pendingCount > 0 ? `Pending: ${pendingCount}` : "mr.perfect";
+    updateFavicon(pendingCount); // Update the favicon based on the number of pending todos
   },
-  { immediate: true }
+  { immediate: true } // Run the watcher immediately on component mount
 );
 </script>
 
@@ -79,3 +87,4 @@ watch(
   margin: 2vh;
 }
 </style>
+

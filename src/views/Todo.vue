@@ -1,33 +1,23 @@
 <template>
   <div class="todo custom-scrollbar">
-    <v-list flat  >
+    <v-list flat>
       <div class="d-flex align-center pb-3 pr-2">
-        <v-text-field
-          v-model="taskTitle"
-          @keyup.enter="handleTaskAction"
-          @input="updateTaskTitle"
-          class="px-3"
-          label="Add Task"
-          variant="outlined"
-          hide-details
-          ref="taskInput"
-          clearable
-          maxlength="30"
-        />
+        <v-text-field v-model="taskTitle" @keyup.enter="handleTaskAction" @input="updateTaskTitle" class="px-3" label="Add Task" variant="outlined" hide-details ref="taskInput" clearable maxlength="30"/>
         <v-btn @click="handleTaskAction" icon>
           <v-icon>mdi-plus</v-icon>
         </v-btn>
       </div>
-      <div>
         <div v-if="isMobile && $store.state.todos.length">
-          <v-select
-            class="px-3"
-            :items="itemsStatus"
-            density="comfortable"
-            label="Filter by"
-          ></v-select>
+          <v-select :items="itemsStatus" item-title="title" label="Filter by">
+            <template v-slot:item="{ props, item }">
+              <v-list-item
+                @click="handleFilterChange(item.raw.title)"
+                v-bind="props"
+              ></v-list-item>
+            </template>
+          </v-select>
         </div>
-        <div v-else-if="$store.state.todos.length" class="filter pb-5">
+        <div v-else-if="$store.state.todos.length" class="filter py-5">
           <v-btn @click.stop="setFilterStatus('all')">All Tasks</v-btn>
           <div v-if="$store.state.pendingTodo != 0">
             <v-btn @click.stop="setFilterStatus('pending')">Pending</v-btn>
@@ -36,77 +26,41 @@
             <v-btn @click.stop="setFilterStatus('completed')">Completed</v-btn>
           </div>
         </div>
-      </div>
-      <div v-if="!$store.state.isLoaded">
-        <Shimmer />
-      </div>
+      <div v-if="!$store.state.isLoaded"> <Shimmer /> </div>
       <div v-else-if="$store.state.todos.length > 0">
         <div v-for="task in filteredTodos" :key="task.id">
-          <v-list-item
-            class="py-2"
-            @click="changeStatus(task.id, !task.status)"
-            :style="{ backgroundColor: task.status ? '#ebf9fc' : '' }"
-          >
+          <v-list-item class="py-2" @click="changeStatus(task.id, !task.status)" :style="{ backgroundColor: task.status ? '#ebf9fc' : '' }">
             <template v-slot:default>
               <div class="d-flex align-center">
                 <v-list-item-action>
                   <v-checkbox-btn v-model="task.status" :disabled="editMode" />
                 </v-list-item-action>
                 <v-list-item-content>
-                  <v-list-item-title
-                    class="taskTitle"
-                    :class="{ 'text-decoration-line-through': task.status }"
-                  >
-                    {{ task.title }}
+                  <v-list-item-title class="taskTitle" :class="{ 'text-decoration-line-through': task.status }">
+                    <div v-if="isMobile">
+                      {{ task.title.length > 25  ? task.title.slice(0, 25) + "..."  : task.title }}
+                    </div>
+                    <div v-else> {{ task.title }} </div>
                   </v-list-item-title>
                 </v-list-item-content>
                 <div class="ml-auto">
-                  <div>
-                    <!-- Check if it's a mobile device -->
-                    <v-menu v-if="isMobile" class="custom-menu">
+                  <!-- Check if it's a mobile device -->
+                    <v-menu v-if="isMobile" class="custom-menu" cssClass="e-cret-hide">
                       <template v-slot:activator="{ props }">
-                        <v-icon
-                          icon="mdi-dots-vertical"
-                          v-bind="props"
-                        ></v-icon>
+                        <v-icon icon="mdi-dots-vertical" v-bind="props"></v-icon>
                       </template>
-                      <v-list class="" style="width: 35vw">
-                        <v-list-item
-                          v-for="(item, index) in items"
-                          :key="index"
-                          :value="index"
-                          @click="
-                            handleMobileAction(item.title, task.id, task.title)
-                          "
-                        >
-                          <v-list-item-title>{{
-                            item.title
-                          }}</v-list-item-title>
+                      <v-list style="width: 35vw">
+                        <v-list-item v-for="(item, index) in items" :key="index" :value="index" @click="handleMobileAction(item.title, task, index)">
+                          <v-list-item-title> {{ item.title }} </v-list-item-title>
                         </v-list-item>
                       </v-list>
                     </v-menu>
-
-                    <!-- If not mobile, render actions -->
-                    <div v-else>
-                      <v-list-action class="mx-2">
-                        <v-icon
-                          @click.stop="editTask(task.id, task.title)"
-                          color="#45494a"
-                          >mdi-square-edit-outline</v-icon
-                        >
-                      </v-list-action>
-                      <v-list-action class="mx-2">
-                        <v-icon
-                          @click.stop="deleteTask(task.id, task.title)"
-                          color="#45494a"
-                          >mdi-delete</v-icon
-                        >
-                      </v-list-action>
-                      <v-list-action class="mx-2">
-                        <v-icon color="#45494a">mdi-information</v-icon>
-                      </v-list-action>
-                    </div>
-                  </div>
+                  <!-- If not mobile, render actions -->
+                    <v-list-action v-else class="mx-2" v-for="(item, index) in items" :key="index">
+                      <v-icon v-if="item.title === 'Info'" @click.stop="(infoDialog = true),handleMobileAction(item.title, task)" color="#45494a"
+                        >mdi-information</v-icon>
+                      <v-icon v-else @click.stop="handleMobileAction(item.title, task)" color="#45494a" >{{ getIcon(item.title) }}</v-icon>
+                    </v-list-action>
                 </div>
               </div>
             </template>
@@ -115,45 +69,31 @@
         </div>
       </div>
       <div v-else>
-        <p>
-          <v-empty-state
-            headline="Add Tasks"
+          <v-empty-state class="mt-10" headline="Add Tasks"
             text="Create a task to stay on top of your schedule."
             image="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLxpJO8mE0K-40tyZ2EpwZGTEGGUu18DV2Jf_OupWBFg&s"
           />
-  </p>
       </div>
-      <div v-if="filteredTodos.length==0 && $store.state.todos.length > 0">
-        <p>
-          <v-empty-state
-            headline="Whoops"
-            title="No Tasks Found"
+      <div v-if="filteredTodos.length == 0 && $store.state.todos.length > 0">
+          <v-empty-state headline="Whoops" title="No Tasks Found"
             text="No result related to the Filter"
             image="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQnHz-CBCuiuWXsjvUG_XenxmfuZ8HdjMpCqE25WCge6A&s"
           />
-</p>
       </div>
     </v-list>
   </div>
-  <Warnings
-    :show="showWarning"
-    :message="warningMessage"
-    @update:show="updateWarning"
-  />
-  <Confirmations
-    :show="showConfirmation"
-    @update:show="updateConfirmation"
-    @confirm="confirmAction"
-    :type="confirmationType"
-    :message="confirmationMessage"
-  />
+  <Warnings :show="showWarning" :message="warningMessage" @update:show="updateWarning"/>
+  <Confirmations :show="showConfirmation" @update:show="updateConfirmation" @confirm="confirmAction" :type="confirmationType" :message="confirmationMessage"/>
+  <TaskInfo v-model:infoDialog="infoDialog" :task="selectedTask" />
 </template>
 
 <script setup>
 import Shimmer from "../components/Shimmer/TodoShimmer.vue";
 import Warnings from "../components/Warnings.vue";
 import Confirmations from "../components/Confirmation.vue";
+import TaskInfo from "../components/TaskInfo.vue";
 </script>
+
 <script>
 import store from "@/store";
 import { mapGetters } from "vuex";
@@ -165,7 +105,6 @@ export default {
       taskTitle: "",
       editMode: false,
       editedTaskId: null,
-      loading: true,
       showWarning: false,
       warningMessage: "",
       showConfirmation: false,
@@ -173,7 +112,10 @@ export default {
       confirmationType: "delete", // Default to delete action
       taskToEdit: null,
       taskToDelete: null,
+      infoDialog: false,
+      selectedTask: null,
       items: [{ title: "Delete" }, { title: "Edit" }, { title: "Info" }],
+      selectedFilter: "all", // Initial selected value
     };
   },
   mounted() {
@@ -182,6 +124,7 @@ export default {
     // Listen for resize event to adjust isMobile property
     window.addEventListener("resize", this.checkIfMobile);
   },
+
   beforeUnmount() {
     // Remove the event listener to prevent memory leaks
     window.removeEventListener("resize", this.checkIfMobile);
@@ -200,6 +143,27 @@ export default {
     ...mapGetters(["filteredTodos"]),
   },
   methods: {
+    handleFilterChange(value) {
+      if (value === "All Tasks") {
+        this.setFilterStatus("all");
+      } else if (value === "Completed") {
+        this.setFilterStatus("completed");
+      } else if (value === "Pending") {
+        this.setFilterStatus("pending");
+      }
+    },
+    getIcon(action) {
+      // Return appropriate icon based on action
+      if (action === "Delete") return "mdi-delete";
+       else if (action === "Edit")return "mdi-square-edit-outline";
+    },
+    handleTaskSelection(task) {
+      this.selectedTask = task;
+    },
+    closeDialog() {
+      this.selectedTask = null;
+      this.infoDialog = false;
+    },
     isMobileDevice() {
       // Check viewport width to determine if it's a mobile device
       return window.innerWidth <= 768; // Adjust this value as per your design
@@ -216,7 +180,7 @@ export default {
       this.showWarning = true;
       setTimeout(() => {
         this.showWarning = false;
-      }, 2500);
+      }, 2000);
     },
     updateWarning(val) {
       this.showWarning = val;
@@ -228,13 +192,14 @@ export default {
     updateConfirmation(val) {
       this.showConfirmation = val;
     },
-    handleMobileAction(action, id, title) {
+    handleMobileAction(action, task) {
       if (action === "Delete") {
-        this.deleteTask(id, title);
+        this.deleteTask(task.id, task.title);
       } else if (action === "Edit") {
-        this.editTask(id, title);
+        this.editTask(task.id, task.title);
       } else if (action === "Info") {
-        // Handle info action
+        this.handleTaskSelection(task); // Call handleTaskSelection with the selected task
+        this.infoDialog = true;
       }
     },
     handleTaskAction() {
@@ -248,25 +213,23 @@ export default {
       let duplicatesCount = store.state.todos.filter(
         (todo) => todo.title === this.taskTitle
       ).length;
-      console.log(duplicatesCount, "count");
-
       if (this.editMode) {
-        // If in edit mode, update the existing task
-        if (duplicatesCount == 1) {
+        if (duplicatesCount == 1) {        // If in edit mode, update the existing task
           store.dispatch("updateTodo", {
             id: this.editedTaskId,
             title: this.taskTitle,
           });
           this.taskTitle = ""; // Clear input after updating task
           this.editMode = false; // Exit edit mode
+          this.triggerWarning("Task edited success");
         } else {
           this.triggerWarning("Task already exists");
         }
       } else {
-        // Check if the task already exists
         if (!duplicatesCount) {
           store.dispatch("addTodo", this.taskTitle);
           this.taskTitle = ""; // Clear input after adding todo
+          this.triggerWarning("Task added success");
         } else {
           this.triggerWarning("Task already exists");
         }
@@ -277,7 +240,6 @@ export default {
         this.triggerWarning("Please complete one action at a time.");
         return;
       }
-
       this.taskToDelete = { id, title };
       this.confirmationType = "delete";
       this.confirmationMessage = "Do you really want to delete this task?";
@@ -294,7 +256,6 @@ export default {
       this.confirmationMessage = "Do you really want to edit this task?";
       this.showConfirmation = true;
     },
-
     changeStatus(id, status) {
       if (this.editMode) {
         this.triggerWarning("Please complete one action at a time.");
@@ -308,10 +269,10 @@ export default {
         const { id, title } = this.taskToDelete;
         // Dispatch the action to delete the task
         store.dispatch("deleteTodo", { id, title });
+        this.triggerWarning("Task deleted success");
       } else if (this.confirmationType === "edit") {
         const { id, title } = this.taskToEdit;
-        // Proceed with editing the task
-        this.enterEditMode(id, title);
+        this.enterEditMode(id, title);   // Proceed with editing the task
       }
     },
     enterEditMode(id, title) {
@@ -319,7 +280,6 @@ export default {
       this.taskTitle = title;
       this.editedTaskId = id;
       this.editMode = true;
-
       // Optionally, you can focus on the input field after setting the title
       this.$nextTick(() => {
         this.$refs.taskInput.focus();
@@ -340,26 +300,12 @@ export default {
       }
     },
   },
-  // mounted() {
-  //   // Simulate data loading for demonstration
-  //   setTimeout(() => {
-  //     this.loading = false; // Set loading to false after 3 seconds (data loaded)
-  //   }, 2500);
-  // },
 };
 </script>
 
 <style scoped>
 .custom-app-bar {
   height: 150px;
-}
-.custom-scrollbar {
-  overflow: auto; /* This allows scrolling */
-  scrollbar-width: none; /* For Firefox */
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  display: none; /* For Chrome, Safari, and Opera */
 }
 @media screen and (min-width: 768px) {
   .todo {
